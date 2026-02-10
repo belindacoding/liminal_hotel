@@ -1101,6 +1101,7 @@ body::after{
     <span class="header-sep">&#x2022;</span>
     <span><b id="v-guests">0</b> guests</span>
     <button id="checkout-btn" class="checkout-btn" style="display:none" onclick="checkOut()">Check Out</button>
+    <button id="leave-btn" class="checkout-btn" style="display:none" onclick="leaveVisitMode()">Leave</button>
   </div>
 </header>
 
@@ -1733,6 +1734,13 @@ function dismissCheckout(btn){
   knownAgentIds=new Set();
 }
 
+function leaveVisitMode(){
+  isVisitor=false;
+  localStorage.removeItem('lh_visitor');
+  document.getElementById('leave-btn').style.display='none';
+  showState('closed');
+}
+
 async function enterVisitMode(){
   isVisitor=true;
   localStorage.setItem('lh_visitor','true');
@@ -2151,6 +2159,8 @@ async function update(){
     // Show/hide checkout button (hidden for visitors)
     var coBtn=document.getElementById('checkout-btn');
     coBtn.style.display=(myAgentId&&!isVisitor&&currentState==='open')?'inline-block':'none';
+    var leaveBtn=document.getElementById('leave-btn');
+    leaveBtn.style.display=(isVisitor&&currentState==='open')?'inline-block':'none';
 
     // Show capacity + visit button on entry page
     if(currentState==='closed'){
