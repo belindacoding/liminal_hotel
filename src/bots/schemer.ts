@@ -23,7 +23,7 @@ export class ArchitectBot extends BaseBot {
     super(name, apiUrl, intervalMs);
   }
 
-  decide(agent: AgentState, world: WorldState): BotAction | null {
+  async decide(agent: AgentState, world: WorldState): Promise<BotAction | null> {
     const currentRoom = agent.current_room;
 
     // Priority 1: Claim unclaimed echoes (always grab them)
@@ -41,14 +41,21 @@ export class ArchitectBot extends BaseBot {
       // Only offer commons when we have plenty
       const commons = this.memories.filter(m => m.rarity === "common");
       if (commons.length >= 2) {
-        return {
-          action: "trade",
-          params: {
-            target_agent: pick(othersHere),
-            offer: [commons[0].id],
-            request: [],
-          },
-        };
+        const target = pick(othersHere);
+        const targetMems = await this.api.getTargetMemories(target);
+        // Try to get a rare memory in exchange for a common
+        const rares = targetMems.filter(m => m.rarity !== "common");
+        const toRequest = rares.length > 0 ? pick(rares) : targetMems.length > 0 ? pick(targetMems) : null;
+        if (toRequest) {
+          return {
+            action: "trade",
+            params: {
+              target_agent: target,
+              offer: [commons[0].id],
+              request: [toRequest.id],
+            },
+          };
+        }
       }
     }
 

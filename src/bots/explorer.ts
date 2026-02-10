@@ -16,7 +16,7 @@ export class WandererBot extends BaseBot {
     super(name, apiUrl, intervalMs);
   }
 
-  decide(agent: AgentState, world: WorldState): BotAction | null {
+  async decide(agent: AgentState, world: WorldState): Promise<BotAction | null> {
     this.visitHistory.push(agent.current_room);
     // Keep last 10 visits
     if (this.visitHistory.length > 10) this.visitHistory.shift();
@@ -26,15 +26,19 @@ export class WandererBot extends BaseBot {
       (id) => id !== this.agentId
     );
     if (othersHere.length > 0 && this.memories.length > 0 && Math.random() < 0.3) {
-      const sorted = [...this.memories].sort((a, b) => a.point_value - b.point_value);
-      return {
-        action: "trade",
-        params: {
-          target_agent: pick(othersHere),
-          offer: [sorted[0].id],
-          request: [],
-        },
-      };
+      const target = pick(othersHere);
+      const targetMems = await this.api.getTargetMemories(target);
+      if (targetMems.length > 0) {
+        const sorted = [...this.memories].sort((a, b) => a.point_value - b.point_value);
+        return {
+          action: "trade",
+          params: {
+            target_agent: target,
+            offer: [sorted[0].id],
+            request: [pick(targetMems).id],
+          },
+        };
+      }
     }
 
     // Priority 2: Claim unclaimed echoes (40% chance)

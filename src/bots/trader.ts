@@ -25,7 +25,7 @@ export class BrokerBot extends BaseBot {
     super(name, apiUrl, intervalMs);
   }
 
-  decide(agent: AgentState, world: WorldState): BotAction | null {
+  async decide(agent: AgentState, world: WorldState): Promise<BotAction | null> {
     // Find rooms with other agents
     const roomsWithAgents = this.findRoomsWithAgents(world);
 
@@ -45,16 +45,21 @@ export class BrokerBot extends BaseBot {
       if (target) {
         const toOffer = this.pickMemoryToOffer();
         if (toOffer) {
-          this.lastTradeTarget = target;
-          this.idleCount = 0;
-          return {
-            action: "trade",
-            params: {
-              target_agent: target,
-              offer: [toOffer.id],
-              request: [],
-            },
-          };
+          // Fetch target's memories for a real 1-for-1 swap
+          const targetMems = await this.api.getTargetMemories(target);
+          if (targetMems.length > 0) {
+            const toRequest = pick(targetMems);
+            this.lastTradeTarget = target;
+            this.idleCount = 0;
+            return {
+              action: "trade",
+              params: {
+                target_agent: target,
+                offer: [toOffer.id],
+                request: [toRequest.id],
+              },
+            };
+          }
         }
       }
     }

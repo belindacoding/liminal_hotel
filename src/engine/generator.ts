@@ -74,7 +74,7 @@ export async function generateAgents(): Promise<GeneratedAgent[]> {
       model: "claude-sonnet-4-20250514",
       max_tokens: 3000,
       system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: "Generate 4 guests for The Liminal Hotel. Make them diverse, interesting people with real human problems. Return JSON only." }],
+      messages: [{ role: "user", content: "Generate 3 guests for The Liminal Hotel. Make them diverse, interesting people with real human problems. Return JSON only." }],
     });
 
     const block = response.content[0];
@@ -86,8 +86,8 @@ export async function generateAgents(): Promise<GeneratedAgent[]> {
         text = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
       }
       const parsed = JSON.parse(text);
-      if (parsed.agents && Array.isArray(parsed.agents) && parsed.agents.length >= 4) {
-        return parsed.agents.slice(0, 4).map(validateAgent);
+      if (parsed.agents && Array.isArray(parsed.agents) && parsed.agents.length >= 3) {
+        return parsed.agents.slice(0, 3).map(validateAgent);
       }
     }
     console.log("[Generator] API response didn't parse, using fallback");
@@ -282,21 +282,6 @@ function fallbackAgents(): GeneratedAgent[] {
         { name: "The unanswered letter", description: "She wrote it by hand. Three pages. Her friend never responded.", rarity: "uncommon", sentiment: "painful" },
         { name: "Debugging at 2 AM", description: "The glow of monitors, empty energy drink cans, the satisfaction of a fix.", rarity: "common", sentiment: "neutral" },
         { name: "The apartment with no photos", description: "Clean, efficient, modern. No pictures on the walls. Not even a plant.", rarity: "common", sentiment: "neutral" },
-      ],
-    },
-    {
-      name: "Tomás Rivera",
-      backstory: "A war photographer who can't stop seeing the faces of people he documented but couldn't help. He wants to trade the worst images burned into his mind.",
-      personality: "stoic, haunted, compassionate",
-      memories: [
-        { name: "The boy in the rubble", description: "Aleppo, 2015. A child's hand reaching out. He took the photo instead of reaching back.", rarity: "legendary", sentiment: "painful" },
-        { name: "The Pulitzer call", description: "The phone rang at 6 AM. His editor was crying with joy. He felt nothing.", rarity: "rare", sentiment: "neutral" },
-        { name: "Dancing with his daughter", description: "Her feet on his, spinning in the kitchen to old cumbia records.", rarity: "rare", sentiment: "happy" },
-        { name: "The border crossing", description: "Smuggled into a conflict zone in the back of a truck. The fear that became routine.", rarity: "uncommon", sentiment: "painful" },
-        { name: "His mother's empanadas", description: "Sunday afternoons, flour on her apron, the smell of home.", rarity: "uncommon", sentiment: "happy" },
-        { name: "The colleague who didn't come back", description: "They split up at the checkpoint. He heard the explosion an hour later.", rarity: "rare", sentiment: "painful" },
-        { name: "Sunrise over the Andes", description: "Camping alone at 4,000 meters. The world below the clouds. Perfect silence.", rarity: "uncommon", sentiment: "happy" },
-        { name: "Developing film in the darkroom", description: "The red light, the chemical smell, images slowly appearing like ghosts.", rarity: "common", sentiment: "neutral" },
       ],
     },
   ];

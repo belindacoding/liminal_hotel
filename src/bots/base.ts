@@ -104,6 +104,14 @@ export class HotelAPI {
     return res.json() as Promise<MemoryInfo[]>;
   }
 
+  async getTargetMemories(agentId: string): Promise<MemoryInfo[]> {
+    try {
+      return await this.getAgentMemories(agentId);
+    } catch {
+      return [];
+    }
+  }
+
   async submitAction(agentId: string, action: BotAction): Promise<ActionResult> {
     const res = await fetch(`${this.baseUrl}/world/action`, {
       method: "POST",
@@ -239,7 +247,7 @@ export abstract class BaseBot {
     // Sync memories from server (authoritative source)
     this.memories = serverMemories;
 
-    const action = this.decide(agentState, worldState);
+    const action = await this.decide(agentState, worldState);
     if (!action) {
       this.log(`(idle in ${agentState.current_room})`);
       return;
@@ -269,7 +277,7 @@ export abstract class BaseBot {
   }
 
   /** Subclasses implement this to return the next action */
-  abstract decide(agent: AgentState, world: WorldState): BotAction | null;
+  abstract decide(agent: AgentState, world: WorldState): BotAction | null | Promise<BotAction | null>;
 
   /** Log with bot prefix */
   protected log(msg: string): void {

@@ -32,7 +32,21 @@ async function main() {
   try {
     const res = await fetch(`${API_URL}/world/state`);
     if (!res.ok) throw new Error(`Status ${res.status}`);
+    const state = await res.json() as { hotel: { status: string } };
     console.log("[Launcher] Server is running.\n");
+
+    // Auto-open hotel if closed
+    if (state.hotel.status !== "open") {
+      console.log("[Launcher] Hotel is closed — opening...\n");
+      const openRes = await fetch(`${API_URL}/world/hotel/open`, { method: "POST" });
+      const openData = await openRes.json() as { success: boolean; agents?: Array<{ name: string }> };
+      if (!openData.success) {
+        console.error("[Launcher] Failed to open hotel.");
+        process.exit(1);
+      }
+      const npcNames = (openData.agents || []).map(a => a.name).join(", ");
+      console.log(`[Launcher] Hotel opened with NPCs: ${npcNames}\n`);
+    }
   } catch {
     console.error("[Launcher] Cannot connect to server. Start it first: npm run dev");
     process.exit(1);

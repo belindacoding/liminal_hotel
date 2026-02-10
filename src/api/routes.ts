@@ -227,8 +227,9 @@ router.post("/world/enter", async (req: Request, res: Response) => {
       return;
     }
 
-    // Verify payment (skip in dev mode)
-    if (!isDevMode()) {
+    // Verify payment (skip in dev mode or for bot wallets)
+    const isBotWallet = wallet_address.startsWith("0xbot_") || wallet_address.startsWith("0xdashboard_");
+    if (!isDevMode() && !isBotWallet) {
       const verification = await verifyEntryPayment(tx_hash);
       if (!verification.valid) {
         res.status(400).json({ success: false, error: `Payment verification failed: ${verification.error}` });
