@@ -16,7 +16,7 @@ export const CONFIG = {
 
   // Game constants
   chainId: 10143,
-  tickIntervalMs: 60_000,
+  tickIntervalMs: 120_000,
   eventChancePerTick: 0.05,
   corridorEncounterChance: 0.3,
   conversationCooldownTicks: 2,
