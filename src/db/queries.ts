@@ -567,6 +567,11 @@ export function deactivateAgent(agentId: string): void {
   db.prepare("UPDATE agents SET is_active = 0 WHERE id = ?").run(agentId);
 }
 
+export function renameAgent(agentId: string, newName: string): void {
+  const db = getDb();
+  db.prepare("UPDATE agents SET name = ? WHERE id = ?").run(newName, agentId);
+}
+
 /** Get all active NPCs (wallet_address = 0x000...0) */
 export function getActiveNPCs(): AgentRow[] {
   const db = getDb();
