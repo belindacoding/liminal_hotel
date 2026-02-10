@@ -133,6 +133,12 @@ export function onTradeCompleted(): void {
   queries.updateHotelState({ total_trades: newTotal });
 
   if (newTotal % CONFIG.tradesPerHotelMemory === 0) {
+    // Cap unclaimed echoes to prevent accumulation
+    const unclaimed = queries.getUnclaimedMemories();
+    if (unclaimed.length >= CONFIG.maxUnclaimedEchoes) {
+      console.log(`[Hotel] Skipping echo production — ${unclaimed.length} unclaimed already`);
+      return;
+    }
     produceHotelMemory();
   }
 }

@@ -4,7 +4,7 @@ import { CONFIG } from "./config";
 import { router } from "./api/routes";
 import { errorHandler, rateLimiter } from "./api/middleware";
 import { initDb } from "./db/schema";
-import { getHotelState, getActiveAgents, renameAgent } from "./db/queries";
+import { getHotelState, getActiveAgents, renameAgent, getUnclaimedMemories, deleteMemory } from "./db/queries";
 import { startWorldTick } from "./engine/events";
 
 const app = express();
@@ -38,6 +38,14 @@ app.listen(CONFIG.port, () => {
       renameAgent(agent.id, newName);
       console.log(`[Startup] Renamed placeholder "New Guest" → "${newName}"`);
     }
+  }
+
+  // Trim excess unclaimed echoes
+  const unclaimed = getUnclaimedMemories();
+  if (unclaimed.length > 6) {
+    const toDelete = unclaimed.slice(6);
+    for (const m of toDelete) { deleteMemory(m.id); }
+    console.log(`[Startup] Trimmed ${toDelete.length} excess unclaimed echoes (${unclaimed.length} → 6)`);
   }
 
   // Resume tick loop if hotel was already open (e.g. after hot reload)

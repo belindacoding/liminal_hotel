@@ -28,4 +28,5 @@ export const CONFIG = {
   minGuests: 3, // Spawn NPC backfill when active guests drop below this
   npcCheckoutDriftRatio: 1.0, // 100% — all original memories traded away
   maxMemoriesPerAgent: 10, // Cap to prevent drift stagnation
+  maxUnclaimedEchoes: 6, // Stop producing echoes when this many unclaimed
 } as const;
