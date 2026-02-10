@@ -190,8 +190,10 @@ export async function generateSingleAgent(name: string): Promise<GeneratedAgent>
         text = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
       }
       const parsed = JSON.parse(text);
-      // Force the requested name
-      parsed.name = name;
+      // Use Claude's generated name if input was a placeholder
+      if (name && name !== "New Guest") {
+        parsed.name = name;
+      }
       return validateAgent(parsed);
     }
     console.log("[Generator] Single agent API response didn't parse, using fallback");
