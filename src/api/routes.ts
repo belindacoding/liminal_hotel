@@ -584,6 +584,11 @@ router.get("/dashboard", (_req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, "../dashboard/index.html"));
 });
 
+/** Serve SKILL.md for agent builders */
+router.get("/SKILL.md", (_req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, "../../SKILL.md"));
+});
+
 /** Redirect root to dashboard */
 router.get("/", (_req: Request, res: Response) => {
   res.redirect("/dashboard");

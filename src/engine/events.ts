@@ -50,7 +50,24 @@ export async function worldTick(): Promise<void> {
 
 /** Check active NPCs for 100% drift and replace them */
 async function checkDriftCheckouts(): Promise<void> {
+  // Check both NPCs and bot clients for dissolution
   const npcs = queries.getActiveNPCs();
+  const bots = queries.getActiveBotAgents();
+
+  // Dissolve bot clients at 0 original memories (no replacement)
+  for (const bot of bots) {
+    const originalRemaining = queries.countOriginalMemoriesRemaining(bot.id);
+    if (originalRemaining === 0) {
+      queries.insertWorldEvent({
+        type: "npc_checkout",
+        triggered_by: bot.id,
+        description: `${bot.name} has traded away all their original memories. They no longer remember who they were — and drift out of the hotel like smoke.`,
+        effects: JSON.stringify({ agent_id: bot.id, original_remaining: 0 }),
+      });
+      queries.deactivateAgent(bot.id);
+      console.log(`[World] Bot "${bot.name}" dissolved (0 original memories remain)`);
+    }
+  }
 
   for (const npc of npcs) {
     // Check if NPC has lost all their original memories

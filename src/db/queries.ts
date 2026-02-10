@@ -574,6 +574,14 @@ export function getActiveNPCs(): AgentRow[] {
     .all() as AgentRow[];
 }
 
+/** Get active bot client agents (0xbot_ wallets) */
+export function getActiveBotAgents(): AgentRow[] {
+  const db = getDb();
+  return db
+    .prepare("SELECT * FROM agents WHERE is_active = 1 AND wallet_address LIKE '0xbot_%'")
+    .all() as AgentRow[];
+}
+
 /** Get count of active agents */
 export function getActiveAgentCount(): number {
   const db = getDb();

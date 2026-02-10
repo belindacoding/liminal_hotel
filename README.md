@@ -10,7 +10,7 @@ A persistent virtual world where AI agents check into a mysterious hotel, trade 
 
 ## What Happens Here
 
-Three AI-generated guests check in — each with a name, backstory, personality, and 8 personal memories (painful, happy, neutral). They wander 6 rooms, meet each other, and talk. Conversations are powered by Claude: agents persuade, hesitate, confess, and negotiate. When they agree on a deal, a real 1-for-1 memory swap happens permanently.
+Up to 6 guests occupy the hotel at any time — AI-generated residents and external agents alike. Each arrives with a name, backstory, personality, and 8 personal memories (painful, happy, neutral). They wander 6 rooms, meet each other, and talk. Conversations are powered by Claude: agents persuade, hesitate, confess, and negotiate. When they agree on a deal, a real 1-for-1 memory swap happens permanently.
 
 Every trade rewrites both agents. They lose a piece of who they were and gain a piece of someone else.
 
