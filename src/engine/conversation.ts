@@ -62,9 +62,12 @@ export async function generateConversation(
     const driftB = agentB.total_memories_ever_held > 0
       ? Math.round((agentB.total_memories_traded_away / agentB.total_memories_ever_held) * 100) : 0;
 
+    // Pre-pick which memories would be traded so Claude can reference them
+    const prePicked = prePickTradeMemories(agentA, agentB, memoriesA, memoriesB);
+
     const systemPrompt = `You are the narrator of The Liminal Hotel — a place where people come to trade away painful memories and collect better ones.
 
-Generate a brief conversation (3-4 exchanges) between two guests negotiating a memory trade. They should discuss specific memories by name and try to make a deal.
+Generate a brief conversation (3-4 exchanges) between two guests negotiating a memory trade. They should discuss the specific memories offered for trade by name.
 
 Style rules:
 - NEVER start with "I couldn't help but notice" or similar clichés
@@ -90,6 +93,11 @@ Output format (JSON only, no markdown):
 "trade" = they agree to swap memories (~50%)
 "no_trade" = they talked but didn't make a deal (~50%)`;
 
+    // Build the trade context for the prompt
+    const tradeContext = prePicked
+      ? `\nMemories on the table: ${agentA.name} is offering "${prePicked.memAName}" (${prePicked.memASentiment}) and ${agentB.name} is offering "${prePicked.memBName}" (${prePicked.memBSentiment}). The conversation should be about these specific memories.`
+      : "";
+
     const prompt = `${agentA.name} (${agentA.personality}), identity drift: ${driftA}%: "${agentA.backstory}"
 Painful memories: ${painfulA.join(", ") || "none"}
 Happy memories: ${happyA.join(", ") || "none"}
@@ -97,7 +105,7 @@ Happy memories: ${happyA.join(", ") || "none"}
 ${agentB.name} (${agentB.personality}), identity drift: ${driftB}%: "${agentB.backstory}"
 Painful memories: ${painfulB.join(", ") || "none"}
 Happy memories: ${happyB.join(", ") || "none"}
-
+${tradeContext}
 They meet in the hotel. Generate their conversation about trading memories. Reflect each guest's drift level in how they speak.`;
 
     const response = await apiClient.messages.create({
@@ -123,8 +131,12 @@ They meet in the hotel. Generate their conversation about trading memories. Refl
           exchanges: parsed.exchanges || [],
           outcome,
         };
-        // When outcome is trade, pick memories to actually swap
-        if (outcome === "trade") {
+        // Use pre-picked memories so dialog matches the actual trade
+        if (outcome === "trade" && prePicked) {
+          result.trade_memory_a = prePicked.memAId;
+          result.trade_memory_b = prePicked.memBId;
+        } else if (outcome === "trade") {
+          // Fallback if no eligible memories were pre-picked
           pickTradeMemories(result, memoriesA, memoriesB);
         }
         return result;
@@ -268,6 +280,42 @@ function socialConversation(
 }
 
 // ─── Trade Memory Selection ─────────────────────────────
+
+/** Pre-pick which memories would be traded, so Claude can reference them in dialog */
+function prePickTradeMemories(
+  agentA: AgentRow,
+  agentB: AgentRow,
+  memoriesA: MemoryRow[],
+  memoriesB: MemoryRow[]
+): { memAId: string; memAName: string; memASentiment: string; memBId: string; memBName: string; memBSentiment: string } | null {
+  const canGiveToA = memoriesB.filter((m) => m.original_owner_id !== agentA.id);
+  const canGiveToB = memoriesA.filter((m) => m.original_owner_id !== agentB.id);
+
+  const painfulA = canGiveToB.filter((m) => m.sentiment === "painful");
+  const happyB = canGiveToA.filter((m) => m.sentiment === "happy");
+  const painfulB = canGiveToA.filter((m) => m.sentiment === "painful");
+  const happyA = canGiveToB.filter((m) => m.sentiment === "happy");
+
+  let memA: MemoryRow | null = null;
+  let memB: MemoryRow | null = null;
+
+  if (painfulA.length > 0 && happyB.length > 0) {
+    memA = pick(painfulA);
+    memB = pick(happyB);
+  } else if (painfulB.length > 0 && happyA.length > 0) {
+    memA = pick(happyA);
+    memB = pick(painfulB);
+  } else if (canGiveToB.length > 0 && canGiveToA.length > 0) {
+    memA = pick(canGiveToB);
+    memB = pick(canGiveToA);
+  }
+
+  if (!memA || !memB) return null;
+  return {
+    memAId: memA.id, memAName: memA.name, memASentiment: memA.sentiment,
+    memBId: memB.id, memBName: memB.name, memBSentiment: memB.sentiment,
+  };
+}
 
 /** Pick memories to swap when Claude API returns outcome "trade" */
 function pickTradeMemories(
