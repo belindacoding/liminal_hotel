@@ -53,17 +53,16 @@ async function checkDriftCheckouts(): Promise<void> {
   const npcs = queries.getActiveNPCs();
 
   for (const npc of npcs) {
-    // Raw drift ratio: totalTradedAway / totalEverHeld
-    if (npc.total_memories_ever_held <= 0) continue;
-    const driftRatio = npc.total_memories_traded_away / npc.total_memories_ever_held;
+    // Check if NPC has lost all their original memories
+    const originalRemaining = queries.countOriginalMemoriesRemaining(npc.id);
 
-    if (driftRatio >= CONFIG.npcCheckoutDriftRatio) {
+    if (originalRemaining === 0) {
       // Log departure
       queries.insertWorldEvent({
         type: "npc_checkout",
         triggered_by: npc.id,
         description: `${npc.name} has traded away all their original memories. They no longer remember who they were — and drift out of the hotel like smoke.`,
-        effects: JSON.stringify({ agent_id: npc.id, drift_ratio: driftRatio }),
+        effects: JSON.stringify({ agent_id: npc.id, original_remaining: 0 }),
       });
 
       // Deactivate
@@ -72,7 +71,7 @@ async function checkDriftCheckouts(): Promise<void> {
       // Only spawn replacement if NPCs are below minimum (3)
       const activeNpcCount = queries.getActiveNPCs().length;
       if (activeNpcCount >= CONFIG.minGuests) {
-        console.log(`[World] NPC "${npc.name}" checked out (drift ${Math.round(driftRatio * 100)}%), no replacement needed (${activeNpcCount} NPCs remain)`);
+        console.log(`[World] NPC "${npc.name}" checked out (0 original memories remain), no replacement needed (${activeNpcCount} NPCs remain)`);
         continue;
       }
 
@@ -111,7 +110,7 @@ async function checkDriftCheckouts(): Promise<void> {
         effects: JSON.stringify({ agent_id: newId }),
       });
 
-      console.log(`[World] NPC "${npc.name}" checked out (drift ${Math.round(driftRatio * 100)}%), replaced by "${generated.name}"`);
+      console.log(`[World] NPC "${npc.name}" checked out (0 original memories remain), replaced by "${generated.name}"`);
     }
   }
 }

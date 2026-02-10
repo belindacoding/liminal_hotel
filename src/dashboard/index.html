@@ -1253,6 +1253,7 @@ function gc(id){if(!(id in colorMap)){colorMap[id]=colorIdx%4;colorIdx++}return 
 async function fj(u){return(await fetch(u)).json()}
 async function fetchAgent(id){try{var d=await fj('/world/agent/'+id);if(d&&d.id)agentCache[id]=d}catch{}}
 async function fetchMems(id){try{memCache[id]=await fj('/world/agent/'+id+'/memories')}catch{memCache[id]=[]}}
+async function fetchOrigMems(id){try{origMemCache[id]=await fj('/world/agent/'+id+'/original-memories')}catch{origMemCache[id]=[]}}
 
 function getInitial(name){
   if(!name)return'?';
@@ -1807,10 +1808,12 @@ async function showGuestDetail(agentId){
   }
 
   // Drift — use raw ratio for accuracy
-  var driftPct=0;
-  if(agent.total_memories_ever_held>0){
-    driftPct=Math.round((agent.total_memories_traded_away/agent.total_memories_ever_held)*100);
-  }
+  // Drift = percentage of original memories traded away
+  var currentIds=new Set();
+  currentMems.forEach(function(m){currentIds.add(m.id)});
+  var originalRemaining=originalMems.filter(function(m){return currentIds.has(m.id)}).length;
+  var totalOriginal=originalMems.length||8;
+  var driftPct=Math.round(((totalOriginal-originalRemaining)/totalOriginal)*100);
   var driftHigh=driftPct>=50;
   html+='<div class="detail-drift">';
   html+='<span class="drift-label">Identity Drift</span>';
@@ -1821,9 +1824,6 @@ async function showGuestDetail(agentId){
   html+='<div class="result-divider"></div>';
 
   // "Arrived With" — from original memories endpoint (shows actual names even if traded away)
-  var currentIds=new Set();
-  currentMems.forEach(function(m){currentIds.add(m.id)});
-
   var arrivedWith=originalMems.map(function(m){
     return {name:m.name,sentiment:m.sentiment,still_owned:currentIds.has(m.id)};
   });
@@ -2057,14 +2057,18 @@ function renderConversations(convs){
 }
 
 function updateTickBar(tick,totalTrades){
-  // Compute average drift across all cached agents
+  // Compute average drift: % of original memories traded away
   var totalDrift=0,agentCount=0;
   for(var id in agentCache){
     var a=agentCache[id];
-    if(a&&a.is_active&&a.total_memories_ever_held>0){
-      totalDrift+=a.total_memories_traded_away/a.total_memories_ever_held;
-      agentCount++;
-    }
+    if(!a||!a.is_active)continue;
+    var orig=origMemCache[id]||[];
+    var curr=memCache[id]||[];
+    if(orig.length===0)continue;
+    var currIds=new Set();curr.forEach(function(m){currIds.add(m.id)});
+    var remaining=orig.filter(function(m){return currIds.has(m.id)}).length;
+    totalDrift+=(orig.length-remaining)/orig.length;
+    agentCount++;
   }
   var avgDrift=agentCount>0?Math.round((totalDrift/agentCount)*100):0;
   document.getElementById('tick-fill').style.width=avgDrift+'%';
@@ -2235,7 +2239,7 @@ async function update(){
         for(var id of(rm.agents||[]))ids.add(id);
       for(var e of(state.leaderboard||[]))if(e.agent_id)ids.add(e.agent_id);
       for(var cv of convs){if(cv.agent_a_id)ids.add(cv.agent_a_id);if(cv.agent_b_id)ids.add(cv.agent_b_id)}
-      await Promise.all([...ids].flatMap(function(id){return[fetchAgent(id),fetchMems(id)]}));
+      await Promise.all([...ids].flatMap(function(id){return[fetchAgent(id),fetchMems(id),fetchOrigMems(id)]}));
 
       // Detect new agents (NPC replacements) and show entry toasts
       var currentAgentIds=new Set();

@@ -195,6 +195,15 @@ export function getAgentOriginalMemories(agentId: string): MemoryRow[] {
     .all(agentId) as MemoryRow[];
 }
 
+/** Count how many of an agent's original memories they still own */
+export function countOriginalMemoriesRemaining(agentId: string): number {
+  const db = getDb();
+  const row = db
+    .prepare("SELECT COUNT(*) as cnt FROM memories WHERE original_owner_id = ? AND owner_id = ?")
+    .get(agentId, agentId) as { cnt: number };
+  return row.cnt;
+}
+
 // ─── Action Log ──────────────────────────────────────────
 
 /** Get recent action history */
