@@ -21,7 +21,7 @@ app.use(router);
 app.use(errorHandler);
 
 // Initialize database and start server
-initDb();
+initDb(CONFIG.databasePath || undefined);
 
 app.listen(CONFIG.port, () => {
   console.log(`\n  ╔══════════════════════════════════════╗`);

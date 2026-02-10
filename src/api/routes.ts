@@ -208,11 +208,33 @@ router.post("/world/enter", async (req: Request, res: Response) => {
       return;
     }
 
-    // Check guest cap
+    // Check guest cap — NPCs yield for real players
     const activeCount = queries.getActiveAgentCount();
     if (activeCount >= CONFIG.maxGuests) {
-      res.status(400).json({ success: false, error: "Hotel is at capacity (6 guests). Try again later." });
-      return;
+      const isBotEntry = wallet_address.startsWith("0xbot_") || wallet_address.startsWith("0xdashboard_");
+      if (isBotEntry) {
+        res.status(400).json({ success: false, error: "Hotel is at capacity (6 guests). Try again later." });
+        return;
+      }
+      // Real player — bump the NPC with highest drift
+      const npcs = queries.getActiveNPCs();
+      if (npcs.length === 0) {
+        res.status(400).json({ success: false, error: "Hotel is at capacity and no NPCs to replace." });
+        return;
+      }
+      const highestDrift = npcs.sort((a, b) => {
+        const driftA = a.total_memories_ever_held > 0 ? a.total_memories_traded_away / a.total_memories_ever_held : 0;
+        const driftB = b.total_memories_ever_held > 0 ? b.total_memories_traded_away / b.total_memories_ever_held : 0;
+        return driftB - driftA;
+      })[0];
+      queries.deactivateAgent(highestDrift.id);
+      queries.insertWorldEvent({
+        type: "npc_yielded",
+        triggered_by: highestDrift.id,
+        description: `${highestDrift.name} steps aside to make room for a new guest. The hotel reshuffles.`,
+        effects: JSON.stringify({ replaced_by: "incoming_player" }),
+      });
+      console.log(`[Entry] NPC "${highestDrift.name}" yielded slot for real player`);
     }
 
     // Check tx_hash not already used
@@ -363,6 +385,47 @@ router.post("/world/checkout", async (req: Request, res: Response) => {
     });
 
     console.log(`[Checkout] Agent "${agent.name}" (${agent_id}) checked out`);
+
+    // Backfill: if active guests dropped below minimum, spawn a fresh NPC
+    const activeAfter = queries.getActiveAgentCount();
+    if (activeAfter < CONFIG.minGuests) {
+      try {
+        const generated = await generateSingleAgent("New Guest");
+        const newId = generateAgentId();
+
+        queries.insertAgent({
+          id: newId,
+          name: generated.name,
+          entry_tx_hash: `gen_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          wallet_address: "0x0000000000000000000000000000000000000000",
+          trait_1: generated.personality.split(",")[0]?.trim() || "quiet",
+          trait_2: generated.personality.split(",")[1]?.trim() || "thoughtful",
+          trait_3: generated.personality.split(",")[2]?.trim() || "searching",
+          origin_story: generated.backstory,
+          backstory: generated.backstory,
+          personality: generated.personality,
+        });
+
+        for (const mem of generated.memories) {
+          const dbMem = toDbMemory(mem, newId);
+          queries.insertMemory(dbMem);
+        }
+
+        queries.updateDrift(newId, generated.memories.length, 0, 0, []);
+        queries.updateHotelState({ total_guests_ever: (queries.getHotelState().total_guests_ever || 0) + 1 });
+
+        queries.insertWorldEvent({
+          type: "npc_backfill",
+          triggered_by: newId,
+          description: `${generated.name} appears in the lobby, drawn by the hotel's need. The hotel never stays empty for long.`,
+          effects: JSON.stringify({ agent_id: newId }),
+        });
+
+        console.log(`[Checkout] Backfill: "${generated.name}" spawned to maintain minimum ${CONFIG.minGuests} guests`);
+      } catch (err) {
+        console.error("[Checkout] NPC backfill failed:", (err as Error).message);
+      }
+    }
 
     res.json({
       success: true,

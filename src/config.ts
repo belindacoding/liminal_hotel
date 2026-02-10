@@ -4,6 +4,7 @@ dotenv.config();
 export const CONFIG = {
   port: parseInt(process.env.PORT || "3000", 10),
   nodeEnv: process.env.NODE_ENV || "development",
+  databasePath: process.env.DATABASE_PATH || "",
 
   // Monad
   monadRpcUrl: process.env.MONAD_RPC_URL || "https://testnet-rpc.monad.xyz",
@@ -24,5 +25,6 @@ export const CONFIG = {
   // Guest cap & checkout
   maxGuests: 6,
   maxExternalGuests: 3,
+  minGuests: 3, // Spawn NPC backfill when active guests drop below this
   npcCheckoutDriftRatio: 1.0, // 100% — all original memories traded away
 } as const;
