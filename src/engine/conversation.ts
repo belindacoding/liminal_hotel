@@ -75,8 +75,8 @@ Output format (JSON only, no markdown):
   "outcome": "trade" | "no_trade"
 }
 
-"trade" = they agree to swap memories (~35% — trades should feel rare and meaningful)
-"no_trade" = they talked but didn't make a deal (~65% — most conversations are just conversations)`;
+"trade" = they agree to swap memories (~50%)
+"no_trade" = they talked but didn't make a deal (~50%)`;
 
     const prompt = `${agentA.name} (${agentA.personality}): "${agentA.backstory}"
 Painful memories: ${painfulA.join(", ") || "none"}
@@ -183,7 +183,7 @@ function tradeConversation(
     `I'll miss it, in a way. But you needed it. The hotel knows these things.`,
   ];
 
-  const agreed = Math.random() < 0.35;
+  const agreed = Math.random() < 0.5;
 
   if (agreed) {
     return {
