@@ -1245,7 +1245,7 @@ let knownAgentIds=new Set();
 let lastEchoesKey='';
 let prevUnclaimedIds=new Set();
 let claimToastTimer=null;
-let isVisitor=false;
+let isVisitor=localStorage.getItem('lh_visitor')==='true';
 
 function esc(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):''}
 function gc(id){if(!(id in colorMap)){colorMap[id]=colorIdx%4;colorIdx++}return colorMap[id]}
@@ -1466,6 +1466,8 @@ async function checkIn(){
     // 4. Success — store agent ID and show welcome
     myAgentId=enterData.agent_id;
     localStorage.setItem('lh_agent_id',myAgentId);
+    isVisitor=false;
+    localStorage.removeItem('lh_visitor');
     document.getElementById('agents-layer').innerHTML='';
     document.getElementById('entry-toasts').innerHTML='';
     showWelcome(enterData, name);
@@ -1733,6 +1735,7 @@ function dismissCheckout(btn){
 
 async function enterVisitMode(){
   isVisitor=true;
+  localStorage.setItem('lh_visitor','true');
   myAgentId=null;
   localStorage.removeItem('lh_agent_id');
   // Check if hotel is open
@@ -2186,9 +2189,15 @@ async function update(){
       }
     }
 
+    // If visitor mode was saved and hotel is open, restore it
+    if(isVisitor&&!myAgentId&&status==='open'&&currentState==='closed'){
+      showState('open');
+    }
+
     // If hotel closes while visitor is watching, go back to entry
     if(status!=='open'&&currentState==='open'&&isVisitor){
       isVisitor=false;
+      localStorage.removeItem('lh_visitor');
       showState('closed');
     }
 

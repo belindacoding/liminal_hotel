@@ -69,6 +69,13 @@ async function checkDriftCheckouts(): Promise<void> {
       // Deactivate
       queries.deactivateAgent(npc.id);
 
+      // Only spawn replacement if NPCs are below minimum (3)
+      const activeNpcCount = queries.getActiveNPCs().length;
+      if (activeNpcCount >= CONFIG.minGuests) {
+        console.log(`[World] NPC "${npc.name}" checked out (drift ${Math.round(driftRatio * 100)}%), no replacement needed (${activeNpcCount} NPCs remain)`);
+        continue;
+      }
+
       // Generate replacement NPC
       const generated = await generateSingleAgent("New Guest");
       const newId = generateAgentId();
