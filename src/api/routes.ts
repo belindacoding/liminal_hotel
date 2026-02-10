@@ -505,3 +505,8 @@ router.post("/world/action", async (req: Request, res: Response) => {
 router.get("/dashboard", (_req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, "../dashboard/index.html"));
 });
+
+/** Redirect root to dashboard */
+router.get("/", (_req: Request, res: Response) => {
+  res.redirect("/dashboard");
+});
