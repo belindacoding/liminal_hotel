@@ -461,6 +461,20 @@ router.get("/world/state", (_req: Request, res: Response) => {
 });
 
 /** Returns a specific agent's full state */
+/** Look up an active agent by wallet address */
+router.get("/world/agent/by-wallet/:wallet", (req: Request, res: Response) => {
+  try {
+    const agent = queries.getAgentByWallet(req.params.wallet);
+    if (!agent) {
+      res.json({ found: false });
+      return;
+    }
+    res.json({ found: true, agent_id: agent.id, name: agent.name });
+  } catch (err) {
+    res.status(500).json({ success: false, error: "Failed to look up wallet" });
+  }
+});
+
 router.get("/world/agent/:id", (req: Request, res: Response) => {
   try {
     const agent = queries.getAgent(req.params.id);

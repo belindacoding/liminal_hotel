@@ -1397,6 +1397,21 @@ async function checkIn(){
         return;
       }
 
+      // Check if this wallet already has an active agent
+      try{
+        btn.innerHTML='<span class="spinner"></span><span>Checking session...</span>';
+        var existing=await fj('/world/agent/by-wallet/'+walletAddress);
+        if(existing.found){
+          myAgentId=existing.agent_id;
+          localStorage.setItem('lh_agent_id',myAgentId);
+          isVisitor=false;
+          localStorage.removeItem('lh_visitor');
+          showState('open');
+          btn.disabled=false;btn.innerHTML='<span>Check In</span>';
+          return;
+        }
+      }catch(e){}
+
       try{
         btn.innerHTML='<span class="spinner"></span><span>Switching to Monad...</span>';
         await switchToMonad(info.chain_id,info.rpc_url);
