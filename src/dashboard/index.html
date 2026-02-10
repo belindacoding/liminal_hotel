@@ -549,6 +549,9 @@ body::after{
 }
 .co-trade{color:var(--gold);background:rgba(201,167,105,.1);border:1px solid rgba(201,167,105,.15)}
 .co-no_trade{color:var(--ink-3);background:rgba(255,255,255,.03);border:1px solid var(--ink-ghost)}
+.conv-trade-summary{padding:6px 10px;margin-top:4px;font-size:10px;color:var(--ink-3);border-top:1px solid rgba(201,167,105,.06);font-style:italic;text-align:center}
+.conv-trade-summary .trade-arrow{color:var(--gold-dim);margin:0 4px}
+.conv-trade-summary .trade-mem{color:var(--ink-2)}
 
 .conv-new .conv-outcome-tag{opacity:0;animation:bubble-in .4s ease-out 2.5s forwards}
 
@@ -2105,6 +2108,21 @@ function renderConversations(convs){
       html+='</div>';
       html+='<div class="conv-text">&ldquo;'+esc(ex.text)+'&rdquo;</div>';
       html+='</div>';
+    }
+    // Trade summary — show which memories changed hands
+    if(c.outcome==='trade'&&c.trade_summary){
+      try{
+        var ts=typeof c.trade_summary==='string'?JSON.parse(c.trade_summary):c.trade_summary;
+        if(ts.gave_a&&ts.gave_b){
+          var firstA=(nameA||'').split(' ')[0];
+          var firstB=(nameB||'').split(' ')[0];
+          html+='<div class="conv-trade-summary">';
+          html+=esc(firstA)+' gave <span class="trade-mem">&ldquo;'+esc(ts.gave_a.name)+'&rdquo;</span>';
+          html+='<span class="trade-arrow">&harr;</span>';
+          html+=esc(firstB)+' gave <span class="trade-mem">&ldquo;'+esc(ts.gave_b.name)+'&rdquo;</span>';
+          html+='</div>';
+        }
+      }catch{}
     }
     html+='</div></div>';
     html+='</div>';

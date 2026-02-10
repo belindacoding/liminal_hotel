@@ -7,7 +7,7 @@ import {
   GeneratedMemory,
 } from "./economy";
 import { generateNarrative, NarrativeContext } from "./narrative";
-import { onTradeCompleted } from "./hotelmemory";
+
 
 // ─── Action Response ─────────────────────────────────────
 
@@ -61,8 +61,7 @@ export async function processAction(request: ActionRequest): Promise<ActionRespo
       result = handleMove(agent, request.params);
       break;
     case "trade":
-      result = handleTrade(agent, memories, request.params);
-      break;
+      return errorResponse("trade", "Direct trades are not supported. Trades happen through conversations — move to a room with another agent and wait.");
     case "claim":
       result = handleClaim(agent, request.params);
       break;
@@ -166,113 +165,6 @@ function handleMove(agent: AgentRow, params: ActionRequest["params"]): HandlerRe
   return result;
 }
 
-function handleTrade(
-  agent: AgentRow,
-  memories: MemoryRow[],
-  params: ActionRequest["params"]
-): HandlerResult {
-  const result = emptyResult();
-  const target = queries.getAgent(params.target_agent!);
-
-  if (!target) {
-    result.error = "Target agent not found.";
-    return result;
-  }
-
-  // Require same room
-  if (target.current_room !== agent.current_room) {
-    result.error = "Target agent is not in the same room.";
-    return result;
-  }
-
-  const targetMemories = queries.getAgentMemories(target.id);
-  const offeredIds = params.offer || [];
-  const requestedIds = params.request || [];
-
-  // Require at least something to be exchanged
-  if (offeredIds.length === 0 && requestedIds.length === 0) {
-    result.error = "Nothing to trade. Offer or request memories.";
-    return result;
-  }
-
-  // Validate requested memories belong to target
-  const targetOwnedIds = new Set(targetMemories.map((m) => m.id));
-  for (const mid of requestedIds) {
-    if (!targetOwnedIds.has(mid)) {
-      result.error = `Target does not own memory ${mid}.`;
-      return result;
-    }
-  }
-
-  // Execute trade: transfer offered memories to target
-  for (const mid of offeredIds) {
-    queries.transferMemory(mid, target.id);
-  }
-
-  // Transfer requested memories to agent
-  for (const mid of requestedIds) {
-    queries.transferMemory(mid, agent.id);
-  }
-
-  // Update drift tracking for both agents
-  const agentGained = requestedIds.length;
-  const agentLost = offeredIds.length;
-  const agentEverHeld = agent.total_memories_ever_held + agentGained;
-  const agentTradedAway = agent.total_memories_traded_away + agentLost;
-  const agentDrift = calculateDriftLevel(agentEverHeld, agentTradedAway);
-  const agentEchoes: string[] = JSON.parse(agent.echo_sources);
-  if (agentGained > 0 && !agentEchoes.includes(target.id)) {
-    agentEchoes.push(target.id);
-  }
-  queries.updateDrift(agent.id, agentEverHeld, agentTradedAway, agentDrift, agentEchoes);
-
-  const targetGained = offeredIds.length;
-  const targetLost = requestedIds.length;
-  const targetEverHeld = target.total_memories_ever_held + targetGained;
-  const targetTradedAway = target.total_memories_traded_away + targetLost;
-  const targetDrift = calculateDriftLevel(targetEverHeld, targetTradedAway);
-  const targetEchoes: string[] = JSON.parse(target.echo_sources);
-  if (targetGained > 0 && !targetEchoes.includes(agent.id)) {
-    targetEchoes.push(agent.id);
-  }
-  queries.updateDrift(target.id, targetEverHeld, targetTradedAway, targetDrift, targetEchoes);
-
-  // Check for drift level changes
-  if (agentDrift > agent.drift_level) {
-    const driftMessages = [
-      "",
-      "Something feels different. A memory that isn't yours surfaces briefly.",
-      "You're becoming someone else. The hotel notices.",
-      "You are more hotel than guest now.",
-    ];
-    result.driftChange = {
-      level: agentDrift,
-      ratio: agentEverHeld > 0 ? agentTradedAway / agentEverHeld : 0,
-      message: driftMessages[agentDrift] || "Something shifts inside you.",
-    };
-  }
-
-  // Record trade
-  queries.insertTrade({
-    seller_id: agent.id,
-    buyer_id: target.id,
-    offered_memories: JSON.stringify(offeredIds),
-    requested_memories: JSON.stringify(requestedIds),
-    status: "completed",
-  });
-
-  // Notify hotel memory system
-  onTradeCompleted();
-
-  result.outcome = {
-    offered: offeredIds,
-    received: requestedIds,
-  };
-  result.worldEffects.push("A trade was completed.");
-
-  return result;
-}
-
 function handleClaim(
   agent: AgentRow,
   params: ActionRequest["params"]
@@ -288,6 +180,13 @@ function handleClaim(
   }
   if (memory.owner_id !== null) {
     result.error = "Memory has already been claimed.";
+    return result;
+  }
+
+  // Enforce memory cap
+  const currentMems = queries.getAgentMemories(agent.id);
+  if (currentMems.length >= CONFIG.maxMemoriesPerAgent) {
+    result.error = "You are carrying too many memories to claim another.";
     return result;
   }
 

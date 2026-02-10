@@ -1,3 +1,4 @@
+import { CONFIG } from "../config";
 import * as queries from "../db/queries";
 import { AgentRow } from "../db/queries";
 import { VALID_ROOMS } from "./rules";
@@ -24,9 +25,10 @@ export async function runBotTick(): Promise<void> {
 }
 
 async function decideBotAction(agent: AgentRow): Promise<void> {
-  // Check for unclaimed hotel memories — 30% chance to claim one
+  // Check for unclaimed hotel memories — 30% chance to claim one (if under memory cap)
+  const currentMems = queries.getAgentMemories(agent.id);
   const unclaimed = queries.getUnclaimedMemories();
-  if (unclaimed.length > 0 && Math.random() < 0.3) {
+  if (unclaimed.length > 0 && currentMems.length < CONFIG.maxMemoriesPerAgent && Math.random() < 0.3) {
     // Prefer happy/neutral echoes, but sometimes the hotel compels painful ones
     const desirable = unclaimed.filter((m) => m.sentiment !== "painful");
     const painful = unclaimed.filter((m) => m.sentiment === "painful");

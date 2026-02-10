@@ -34,6 +34,13 @@ export async function worldTick(): Promise<void> {
     console.error("[World] Conversation processing error:", (err as Error).message);
   }
 
+  // Enforce memory cap — trim excess non-original memories
+  try {
+    trimExcessMemories();
+  } catch (err) {
+    console.error("[World] Memory trim error:", (err as Error).message);
+  }
+
   // Check for NPC drift checkouts
   try {
     await checkDriftCheckouts();
@@ -46,6 +53,28 @@ export async function worldTick(): Promise<void> {
 
   // Update hotel mood based on activity
   updateMood(newTick);
+}
+
+/** Trim agents over the memory cap — delete non-original memories */
+function trimExcessMemories(): void {
+  const agents = queries.getActiveAgents();
+  for (const agent of agents) {
+    const mems = queries.getAgentMemories(agent.id);
+    if (mems.length <= CONFIG.maxMemoriesPerAgent) continue;
+
+    // Keep originals, trim non-originals
+    const originals = mems.filter((m) => m.original_owner_id === agent.id);
+    const nonOriginals = mems.filter((m) => m.original_owner_id !== agent.id);
+    const toKeep = CONFIG.maxMemoriesPerAgent - originals.length;
+    const toDelete = nonOriginals.slice(toKeep);
+
+    for (const mem of toDelete) {
+      queries.deleteMemory(mem.id);
+    }
+    if (toDelete.length > 0) {
+      console.log(`[World] Trimmed ${toDelete.length} excess memories from ${agent.name} (${mems.length} → ${CONFIG.maxMemoriesPerAgent})`);
+    }
+  }
 }
 
 /** Check active NPCs for 100% drift and replace them */

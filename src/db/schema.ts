@@ -61,6 +61,13 @@ export function initDb(dbPath?: string): Database.Database {
     db.exec("ALTER TABLE agents ADD COLUMN personality TEXT NOT NULL DEFAULT ''");
   }
 
+  // Migrate: add trade_summary on conversations
+  const convCols = db.prepare("PRAGMA table_info(conversations)").all() as { name: string }[];
+  const convColNames = convCols.map((c) => c.name);
+  if (!convColNames.includes("trade_summary")) {
+    db.exec("ALTER TABLE conversations ADD COLUMN trade_summary TEXT");
+  }
+
   console.log(`[DB] Initialized at ${resolvedPath}`);
   return db;
 }

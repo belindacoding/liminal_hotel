@@ -455,12 +455,13 @@ export function insertConversation(conv: {
   exchanges: string;
   outcome: string | null;
   tick: number;
+  trade_summary?: string | null;
 }): void {
   const db = getDb();
   db.prepare(
-    `INSERT INTO conversations (agent_a_id, agent_b_id, room, exchanges, outcome, tick)
-     VALUES (@agent_a_id, @agent_b_id, @room, @exchanges, @outcome, @tick)`
-  ).run(conv);
+    `INSERT INTO conversations (agent_a_id, agent_b_id, room, exchanges, outcome, tick, trade_summary)
+     VALUES (@agent_a_id, @agent_b_id, @room, @exchanges, @outcome, @tick, @trade_summary)`
+  ).run({ ...conv, trade_summary: conv.trade_summary ?? null });
 }
 
 /** Get recent conversations */

@@ -375,6 +375,19 @@ export async function processConversations(currentTick: number): Promise<Convers
         const memoriesB = queries.getAgentMemories(b.id);
         const conv = await generateConversation(a, b, room, memoriesA, memoriesB);
 
+        // Build trade summary before executing (memory names still available)
+        let tradeSummary: string | null = null;
+        if (conv.outcome === "trade" && conv.trade_memory_a && conv.trade_memory_b) {
+          const memA = memoriesA.find((m) => m.id === conv.trade_memory_a);
+          const memB = memoriesB.find((m) => m.id === conv.trade_memory_b);
+          if (memA && memB) {
+            tradeSummary = JSON.stringify({
+              gave_a: { name: memA.name, sentiment: memA.sentiment },
+              gave_b: { name: memB.name, sentiment: memB.sentiment },
+            });
+          }
+        }
+
         // Store in DB
         queries.insertConversation({
           agent_a_id: a.id,
@@ -383,6 +396,7 @@ export async function processConversations(currentTick: number): Promise<Convers
           exchanges: JSON.stringify(conv.exchanges),
           outcome: conv.outcome,
           tick: currentTick,
+          trade_summary: tradeSummary,
         });
 
         // Execute the actual trade if outcome is "trade" and memories were selected
