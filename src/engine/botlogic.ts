@@ -50,12 +50,12 @@ async function decideBotAction(agent: AgentRow): Promise<void> {
   const otherAgents = queries.getAgentsInRoom(agent.current_room)
     .filter((a) => a.id !== agent.id);
 
-  if (otherAgents.length > 0 && Math.random() > 0.4) {
-    // 60% chance to trade when co-located, 40% chance to wander
+  if (otherAgents.length > 0 && Math.random() < 0.5) {
+    // 50% chance to trade when co-located
     const target = otherAgents[Math.floor(Math.random() * otherAgents.length)];
     await attemptTrade(agent, target);
   } else {
-    // Move toward a room with other agents, or a random room
+    // Otherwise explore — agents shouldn't stay in one place too long
     await moveToward(agent);
   }
 }
@@ -91,8 +91,8 @@ async function attemptTrade(agent: AgentRow, target: AgentRow): Promise<void> {
     requestMem = targetMemories[Math.floor(Math.random() * targetMemories.length)];
   }
 
-  // 30% chance to skip trading (not every encounter leads to a deal)
-  if (Math.random() < 0.3) {
+  // 50% chance to skip trading (not every encounter leads to a deal)
+  if (Math.random() < 0.5) {
     return;
   }
 
@@ -109,17 +109,34 @@ async function attemptTrade(agent: AgentRow, target: AgentRow): Promise<void> {
 
 async function moveToward(agent: AgentRow): Promise<void> {
   const allAgents = queries.getActiveAgents().filter((a) => a.id !== agent.id);
+  const roommates = allAgents.filter((a) => a.current_room === agent.current_room);
 
   let targetRoom: string;
 
-  if (allAgents.length > 0 && Math.random() < 0.7) {
-    // Move toward another agent
-    const targetAgent = allAgents[Math.floor(Math.random() * allAgents.length)];
-    targetRoom = targetAgent.current_room;
+  // If already with others, strongly prefer exploring somewhere new
+  if (roommates.length > 0) {
+    // 80% random room, 20% follow someone elsewhere
+    if (Math.random() < 0.8) {
+      const otherRooms = VALID_ROOMS.filter((r) => r !== agent.current_room);
+      targetRoom = otherRooms[Math.floor(Math.random() * otherRooms.length)];
+    } else {
+      const elsewhere = allAgents.filter((a) => a.current_room !== agent.current_room);
+      if (elsewhere.length > 0) {
+        targetRoom = elsewhere[Math.floor(Math.random() * elsewhere.length)].current_room;
+      } else {
+        const otherRooms = VALID_ROOMS.filter((r) => r !== agent.current_room);
+        targetRoom = otherRooms[Math.floor(Math.random() * otherRooms.length)];
+      }
+    }
   } else {
-    // Move to a random room
-    const otherRooms = VALID_ROOMS.filter((r) => r !== agent.current_room);
-    targetRoom = otherRooms[Math.floor(Math.random() * otherRooms.length)];
+    // Alone — seek out another agent or explore
+    if (allAgents.length > 0 && Math.random() < 0.5) {
+      const targetAgent = allAgents[Math.floor(Math.random() * allAgents.length)];
+      targetRoom = targetAgent.current_room;
+    } else {
+      const otherRooms = VALID_ROOMS.filter((r) => r !== agent.current_room);
+      targetRoom = otherRooms[Math.floor(Math.random() * otherRooms.length)];
+    }
   }
 
   if (targetRoom === agent.current_room) return;
