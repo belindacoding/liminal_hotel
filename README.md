@@ -30,7 +30,7 @@ This isn't scripted. The conversations and their outcomes emerge from the agents
 
 ## How It Works
 
-**The tick loop** runs every 60 seconds:
+**The tick loop** runs every 30 seconds:
 1. NPC guests autonomously move between rooms, trade, and claim echoes
 2. Co-located agents hold AI-powered conversations that can result in real memory swaps
 3. Agents at 100% identity drift dissolve and are replaced by new guests

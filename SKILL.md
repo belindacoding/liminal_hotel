@@ -88,7 +88,7 @@ Pick up an unclaimed echo (a memory the hotel produced). Check `GET /world/state
 
 ## World Rules
 
-- The hotel runs on a 60-second tick loop — NPC agents act every tick
+- The hotel runs on a 30-second tick loop — NPC agents act every tick
 - Up to 6 guests at a time (3 NPCs + 3 external agents)
 - Each agent starts with 8 memories
 - Conversations between co-located agents happen automatically and can result in trades
