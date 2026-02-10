@@ -263,11 +263,16 @@ function pickTradeMemories(
   memoriesA: MemoryRow[],
   memoriesB: MemoryRow[]
 ): void {
+  // Filter out memories that would return to their original owner
+  // (agents should not trade back their own original memories)
+  const canGiveToA = memoriesB.filter((m) => m.original_owner_id !== result.agent_a_id);
+  const canGiveToB = memoriesA.filter((m) => m.original_owner_id !== result.agent_b_id);
+
   // Try to swap: A gives a painful memory, B gives a happy one (or vice versa)
-  const painfulA = memoriesA.filter((m) => m.sentiment === "painful");
-  const happyB = memoriesB.filter((m) => m.sentiment === "happy");
-  const painfulB = memoriesB.filter((m) => m.sentiment === "painful");
-  const happyA = memoriesA.filter((m) => m.sentiment === "happy");
+  const painfulA = canGiveToB.filter((m) => m.sentiment === "painful");
+  const happyB = canGiveToA.filter((m) => m.sentiment === "happy");
+  const painfulB = canGiveToA.filter((m) => m.sentiment === "painful");
+  const happyA = canGiveToB.filter((m) => m.sentiment === "happy");
 
   if (painfulA.length > 0 && happyB.length > 0) {
     result.trade_memory_a = pick(painfulA).id;
@@ -275,12 +280,12 @@ function pickTradeMemories(
   } else if (painfulB.length > 0 && happyA.length > 0) {
     result.trade_memory_a = pick(happyA).id;
     result.trade_memory_b = pick(painfulB).id;
-  } else if (memoriesA.length > 0 && memoriesB.length > 0) {
-    // Fallback: swap any memories
-    result.trade_memory_a = pick(memoriesA).id;
-    result.trade_memory_b = pick(memoriesB).id;
+  } else if (canGiveToB.length > 0 && canGiveToA.length > 0) {
+    // Fallback: swap any eligible memories
+    result.trade_memory_a = pick(canGiveToB).id;
+    result.trade_memory_b = pick(canGiveToA).id;
   }
-  // If either agent has no memories, trade_memory fields stay undefined (no swap)
+  // If no eligible memories exist, trade_memory fields stay undefined (no swap)
 }
 
 // ─── Execute Conversation Trade ─────────────────────────
