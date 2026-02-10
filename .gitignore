@@ -7,3 +7,4 @@ dist/
 .env
 CLAUDE_3.md
 World Model Agent PRD.md
+.env.example
