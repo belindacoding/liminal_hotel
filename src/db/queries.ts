@@ -123,6 +123,7 @@ export function resetHotelData(): void {
     current_tick: 0,
     last_event_tick: 0,
     total_guests_ever: 0,
+    total_trades: 0,
     mood: "neutral",
     status: "closed",
   });
