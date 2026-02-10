@@ -1614,11 +1614,10 @@ function showCheckoutPreview(agent,currentMems,originalMems){
     return {name:m.name,sentiment:m.sentiment,was_original:originalIds.has(m.id)};
   });
 
-  // Compute drift
-  var driftPct=0;
-  if(agent.total_memories_ever_held>0){
-    driftPct=Math.round((agent.total_memories_traded_away/agent.total_memories_ever_held)*100);
-  }
+  // Compute drift — same formula as guest detail: % of original memories lost
+  var originalRemaining=startMems.filter(function(m){return m.still_owned}).length;
+  var totalOriginal=originalMems.length||8;
+  var driftPct=Math.round(((totalOriginal-originalRemaining)/totalOriginal)*100);
   var driftClass=driftPct>=50?'high':'low';
 
   var traded=startMems.filter(function(m){return !m.still_owned}).length;
