@@ -1,11 +1,11 @@
 import * as queries from "../db/queries";
-import { AgentRow, MemoryRow } from "../db/queries";
+import { AgentRow } from "../db/queries";
 import { VALID_ROOMS } from "./rules";
 import { processAction } from "./actions";
 
 // ─── Bot Decision Logic ─────────────────────────────────
-// Each tick, every agent either moves or trades.
-// Priority: if someone else is in the room, try to trade. Otherwise move.
+// Each tick, every NPC either moves or claims an echo.
+// Trades happen exclusively through the conversation system.
 
 export async function runBotTick(): Promise<void> {
   const agents = queries.getActiveAgents();
@@ -47,64 +47,8 @@ async function decideBotAction(agent: AgentRow): Promise<void> {
     }
   }
 
-  const otherAgents = queries.getAgentsInRoom(agent.current_room)
-    .filter((a) => a.id !== agent.id);
-
-  if (otherAgents.length > 0 && Math.random() < 0.5) {
-    // 50% chance to trade when co-located
-    const target = otherAgents[Math.floor(Math.random() * otherAgents.length)];
-    await attemptTrade(agent, target);
-  } else {
-    // Otherwise explore — agents shouldn't stay in one place too long
-    await moveToward(agent);
-  }
-}
-
-async function attemptTrade(agent: AgentRow, target: AgentRow): Promise<void> {
-  const myMemories = queries.getAgentMemories(agent.id);
-  const targetMemories = queries.getAgentMemories(target.id);
-
-  if (myMemories.length === 0 || targetMemories.length === 0) {
-    // Can't trade if either has no memories — move instead
-    await moveToward(agent);
-    return;
-  }
-
-  // Strategy: offer a painful memory, request a happy one
-  const myPainful = myMemories.filter((m) => m.sentiment === "painful");
-  const targetHappy = targetMemories.filter((m) => m.sentiment === "happy");
-
-  let offerMem: MemoryRow;
-  let requestMem: MemoryRow;
-
-  if (myPainful.length > 0 && targetHappy.length > 0) {
-    // Ideal trade: give painful, get happy
-    offerMem = myPainful[Math.floor(Math.random() * myPainful.length)];
-    requestMem = targetHappy[Math.floor(Math.random() * targetHappy.length)];
-  } else if (myPainful.length > 0) {
-    // Have painful to offload, take anything
-    offerMem = myPainful[Math.floor(Math.random() * myPainful.length)];
-    requestMem = targetMemories[Math.floor(Math.random() * targetMemories.length)];
-  } else {
-    // Random swap — sometimes you just trade for variety
-    offerMem = myMemories[Math.floor(Math.random() * myMemories.length)];
-    requestMem = targetMemories[Math.floor(Math.random() * targetMemories.length)];
-  }
-
-  // 50% chance to skip trading (not every encounter leads to a deal)
-  if (Math.random() < 0.5) {
-    return;
-  }
-
-  await processAction({
-    agent_id: agent.id,
-    action: "trade",
-    params: {
-      target_agent: target.id,
-      offer: [offerMem.id],
-      request: [requestMem.id],
-    },
-  });
+  // Move — explore the hotel
+  await moveToward(agent);
 }
 
 async function moveToward(agent: AgentRow): Promise<void> {
