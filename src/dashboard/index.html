@@ -900,6 +900,8 @@ body::after{
 }
 .g-card{cursor:pointer;transition:border-color .2s,box-shadow .2s}
 .g-card:hover{border-color:var(--card-border-hover);box-shadow:var(--card-glow-hover)}
+.g-more{position:absolute;bottom:4px;right:8px;font-size:10px;color:var(--ink-4);opacity:.4;letter-spacing:2px;transition:opacity .2s}
+.g-card:hover .g-more{opacity:.8;color:var(--gold-dim)}
 
 /* ═══ CHECKOUT BUTTON ═══ */
 .checkout-btn{
@@ -1083,6 +1085,19 @@ body::after{
   .bottom-row{flex-direction:column-reverse}
   .map-panel{width:100%;height:200px;flex-shrink:0;border-left:none;border-bottom:1px solid rgba(201,167,105,.05)}
 }
+
+/* ═══ DRIFT LEADERBOARD ═══ */
+.leaderboard-panel{padding:10px 16px 8px;border-top:1px solid rgba(201,167,105,.06);background:rgba(201,167,105,.02);flex-shrink:0}
+.lb-header{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.lb-title{font-family:'Playfair Display',Georgia,serif;font-size:11px;font-weight:600;color:var(--gold-dim);letter-spacing:.5px;font-style:italic}
+.lb-line{flex:1;height:1px;background:linear-gradient(90deg,var(--ink-ghost),transparent)}
+.lb-row{display:flex;align-items:baseline;gap:6px;padding:2px 0;font-size:11px;font-family:'Libre Franklin',system-ui,sans-serif;color:var(--ink-3)}
+.lb-rank{color:var(--ink-4);width:14px;text-align:right;flex-shrink:0}
+.lb-name{flex:1;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-drift{font-weight:600;flex-shrink:0}
+.lb-orig{color:var(--ink-4);font-size:10px;flex-shrink:0}
+.lb-drift.high{color:var(--gold-bright)}
+.lb-drift.low{color:var(--gold)}
 </style>
 </head>
 <body>
@@ -1118,7 +1133,7 @@ body::after{
       <span>Memory Exchange</span>
     </div>
     <div class="closed-rule"></div>
-    <div class="closed-subtitle">A place where unhappy people come to trade away their painful memories and collect better ones. By the end, they've become someone different.</div>
+    <div class="closed-subtitle">Memories change hands here. So do the people who carry them.</div>
     <div class="entry-form">
       <input type="text" id="entry-name" class="entry-input" placeholder="Your name..." maxlength="40" autocomplete="off" onkeydown="if(event.key==='Enter')checkIn()">
       <div id="entry-error" class="entry-error"></div>
@@ -1142,7 +1157,7 @@ body::after{
 <!-- Tick bar -->
 <div class="tick-row">
   <div class="tick-progress"><div class="tick-fill" id="tick-fill" style="width:0%"></div></div>
-  <div class="tick-label"><span class="tick-drift-label">transformation</span> <b id="drift-avg">0</b>%</div>
+  <div class="tick-label"><span class="tick-drift-label">average drift</span> <b id="drift-avg">0</b>%</div>
 </div>
 
 <!-- Guest cards — horizontal row at top -->
@@ -1212,6 +1227,13 @@ body::after{
         <div class="room-label">Wine Cellar</div>
       </div>
       <div class="agents-layer" id="agents-layer"></div>
+    </div>
+    <div class="leaderboard-panel" id="leaderboard-panel">
+      <div class="lb-header">
+        <div class="lb-title">Identity Drift</div>
+        <div class="lb-line"></div>
+      </div>
+      <div id="leaderboard-list"></div>
     </div>
   </div>
 </div>
@@ -1948,6 +1970,7 @@ function buildCard(e){
   if(a.backstory||a.origin_story){
     h+='<div class="g-backstory">'+esc(a.backstory||a.origin_story)+'</div>';
   }
+  h+='<span class="g-more">&middot;&middot;&middot;</span>';
   h+='</div>';
   return h;
 }
@@ -1959,6 +1982,37 @@ function renderRegistry(lb){
     return;
   }
   el.innerHTML=lb.map(buildCard).join('');
+}
+
+function renderLeaderboard(lb){
+  var el=document.getElementById('leaderboard-list');
+  if(!lb||!lb.length){el.innerHTML='';return}
+  var entries=[];
+  for(var i=0;i<lb.length;i++){
+    var e=lb[i];
+    var a=agentCache[e.agent_id];
+    if(!a||!a.is_active)continue;
+    var orig=origMemCache[e.agent_id]||[];
+    var curr=memCache[e.agent_id]||[];
+    if(orig.length===0)continue;
+    var currIds=new Set();curr.forEach(function(m){currIds.add(m.id)});
+    var remaining=orig.filter(function(m){return currIds.has(m.id)}).length;
+    var drift=Math.round(((orig.length-remaining)/orig.length)*100);
+    entries.push({name:a.name,drift:drift,remaining:remaining,total:orig.length});
+  }
+  entries.sort(function(a,b){return b.drift-a.drift});
+  var html='';
+  for(var j=0;j<entries.length;j++){
+    var en=entries[j];
+    var cls=en.drift>=50?'high':'low';
+    html+='<div class="lb-row">';
+    html+='<span class="lb-rank">'+(j+1)+'.</span>';
+    html+='<span class="lb-name">'+esc(en.name)+'</span>';
+    html+='<span class="lb-drift '+cls+'">'+en.drift+'%</span>';
+    html+='<span class="lb-orig">('+en.remaining+'/'+en.total+' original)</span>';
+    html+='</div>';
+  }
+  el.innerHTML=html;
 }
 
 function toggleConv(e){
@@ -2260,6 +2314,7 @@ async function update(){
       lastRooms=state.rooms||{};
       positionAgents(lastRooms);
       renderRegistry(state.leaderboard);
+      renderLeaderboard(state.leaderboard);
       renderEchoes(state.unclaimed_memories||[], state.recent_events||[]);
       renderConversations(convs);
     }

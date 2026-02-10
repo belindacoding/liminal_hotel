@@ -56,6 +56,12 @@ export async function generateConversation(
     const painfulB = memoriesB.filter((m) => m.sentiment === "painful").map((m) => m.name);
     const happyB = memoriesB.filter((m) => m.sentiment === "happy").map((m) => m.name);
 
+    // Compute drift % for each agent
+    const driftA = agentA.total_memories_ever_held > 0
+      ? Math.round((agentA.total_memories_traded_away / agentA.total_memories_ever_held) * 100) : 0;
+    const driftB = agentB.total_memories_ever_held > 0
+      ? Math.round((agentB.total_memories_traded_away / agentB.total_memories_ever_held) * 100) : 0;
+
     const systemPrompt = `You are the narrator of The Liminal Hotel — a place where people come to trade away painful memories and collect better ones.
 
 Generate a brief conversation (3-4 exchanges) between two guests negotiating a memory trade. They should discuss specific memories by name and try to make a deal.
@@ -65,6 +71,12 @@ Style rules:
 - Vary openers: mid-thought, a question, a confession, silence-breaking, an observation about the room
 - Write like real people — halting, specific, sometimes awkward
 - Use first names only for speakers
+
+Identity drift — each guest has a drift %, measuring how many original memories they've traded away:
+- 0-20%: Grounded. They speak clearly, know who they are, reference their backstory naturally.
+- 20-50%: Unsettled. Occasional hesitation about details from their past. They might second-guess a memory or trail off mid-sentence.
+- 50-75%: Fragmenting. They mix up details, pause to remember their own name, accidentally reference memories they no longer have. Speech becomes halting, disjointed.
+- 75%+: Almost gone. They struggle to form coherent sentences about themselves. May refer to themselves in third person, adopt phrases or mannerisms from people they've traded with, or forget why they came to the hotel. Moments of sudden clarity make it more unsettling.
 
 Output format (JSON only, no markdown):
 {
@@ -78,15 +90,15 @@ Output format (JSON only, no markdown):
 "trade" = they agree to swap memories (~50%)
 "no_trade" = they talked but didn't make a deal (~50%)`;
 
-    const prompt = `${agentA.name} (${agentA.personality}): "${agentA.backstory}"
+    const prompt = `${agentA.name} (${agentA.personality}), identity drift: ${driftA}%: "${agentA.backstory}"
 Painful memories: ${painfulA.join(", ") || "none"}
 Happy memories: ${happyA.join(", ") || "none"}
 
-${agentB.name} (${agentB.personality}): "${agentB.backstory}"
+${agentB.name} (${agentB.personality}), identity drift: ${driftB}%: "${agentB.backstory}"
 Painful memories: ${painfulB.join(", ") || "none"}
 Happy memories: ${happyB.join(", ") || "none"}
 
-They meet in the hotel. Generate their conversation about trading memories.`;
+They meet in the hotel. Generate their conversation about trading memories. Reflect each guest's drift level in how they speak.`;
 
     const response = await apiClient.messages.create({
       model: "claude-sonnet-4-20250514",
