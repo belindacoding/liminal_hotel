@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { v4 as uuid } from "uuid";
 import { CONFIG } from "../config";
 import { POINT_VALUES, Rarity, Sentiment } from "./economy";
+import { getActiveAgents } from "../db/queries";
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -209,9 +210,13 @@ export async function generateSingleAgent(name: string): Promise<GeneratedAgent>
 function fallbackSingleAgent(name: string): GeneratedAgent {
   const FALLBACK_NAMES = ["Elena Torres", "Sam Okafor", "Mira Johansson", "Dante Morales", "Yuki Sato",
     "Rosa Delgado", "Amir Patel", "Ingrid Nygaard", "Leo Marchetti", "Hana Kim"];
-  // Never use placeholder name
+  // Never use placeholder name; avoid duplicates with existing agents
   if (!name || name === "New Guest") {
-    name = FALLBACK_NAMES[Math.floor(Math.random() * FALLBACK_NAMES.length)];
+    const usedNames = new Set(getActiveAgents().map(a => a.name));
+    const available = FALLBACK_NAMES.filter(n => !usedNames.has(n));
+    name = available.length > 0
+      ? available[Math.floor(Math.random() * available.length)]
+      : `Guest ${Date.now().toString(36)}`;
   }
   const personalities = [
     "quiet, observant, guarded",

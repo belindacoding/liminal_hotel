@@ -31,11 +31,18 @@ app.listen(CONFIG.port, () => {
   console.log(`  ╚══════════════════════════════════════╝\n`);
 
   // Fix any placeholder-named agents from failed generation
-  const FALLBACK_NAMES = ["Elena Torres", "Sam Okafor", "Mira Johansson", "Dante Morales", "Yuki Sato"];
-  for (const agent of getActiveAgents()) {
+  const FALLBACK_NAMES = ["Elena Torres", "Sam Okafor", "Mira Johansson", "Dante Morales", "Yuki Sato",
+    "Rosa Delgado", "Amir Patel", "Ingrid Nygaard", "Leo Marchetti", "Hana Kim"];
+  const activeAgents = getActiveAgents();
+  const usedNames = new Set(activeAgents.map(a => a.name));
+  for (const agent of activeAgents) {
     if (agent.name === "New Guest") {
-      const newName = FALLBACK_NAMES[Math.floor(Math.random() * FALLBACK_NAMES.length)];
+      const available = FALLBACK_NAMES.filter(n => !usedNames.has(n));
+      const newName = available.length > 0
+        ? available[Math.floor(Math.random() * available.length)]
+        : `Guest ${agent.id.slice(-4)}`;
       renameAgent(agent.id, newName);
+      usedNames.add(newName);
       console.log(`[Startup] Renamed placeholder "New Guest" → "${newName}"`);
     }
   }
