@@ -30,20 +30,24 @@ app.listen(CONFIG.port, () => {
   console.log(`  ║   Dashboard: /dashboard               ║`);
   console.log(`  ╚══════════════════════════════════════╝\n`);
 
-  // Fix any placeholder-named agents from failed generation
+  // Fix placeholder and duplicate agent names
   const FALLBACK_NAMES = ["Elena Torres", "Sam Okafor", "Mira Johansson", "Dante Morales", "Yuki Sato",
     "Rosa Delgado", "Amir Patel", "Ingrid Nygaard", "Leo Marchetti", "Hana Kim"];
   const activeAgents = getActiveAgents();
-  const usedNames = new Set(activeAgents.map(a => a.name));
+  const usedNames = new Set<string>();
   for (const agent of activeAgents) {
-    if (agent.name === "New Guest") {
+    const needsRename = agent.name === "New Guest" || usedNames.has(agent.name);
+    if (needsRename) {
       const available = FALLBACK_NAMES.filter(n => !usedNames.has(n));
       const newName = available.length > 0
         ? available[Math.floor(Math.random() * available.length)]
         : `Guest ${agent.id.slice(-4)}`;
+      const oldName = agent.name;
       renameAgent(agent.id, newName);
       usedNames.add(newName);
-      console.log(`[Startup] Renamed placeholder "New Guest" → "${newName}"`);
+      console.log(`[Startup] Renamed "${oldName}" → "${newName}" (${needsRename ? "duplicate" : "placeholder"})`);
+    } else {
+      usedNames.add(agent.name);
     }
   }
 
