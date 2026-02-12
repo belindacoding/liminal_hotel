@@ -180,7 +180,9 @@ export async function generateSingleAgent(name: string): Promise<GeneratedAgent>
       model: "claude-sonnet-4-20250514",
       max_tokens: 1500,
       system: SINGLE_AGENT_PROMPT,
-      messages: [{ role: "user", content: `Generate a guest named "${name}" for The Liminal Hotel. Return JSON only.` }],
+      messages: [{ role: "user", content: name && name !== "New Guest"
+        ? `Generate a guest named "${name}" for The Liminal Hotel. Return JSON only.`
+        : `Generate a guest with a realistic full name for The Liminal Hotel. Return JSON only.` }],
     });
 
     const block = response.content[0];
@@ -205,6 +207,12 @@ export async function generateSingleAgent(name: string): Promise<GeneratedAgent>
 }
 
 function fallbackSingleAgent(name: string): GeneratedAgent {
+  const FALLBACK_NAMES = ["Elena Torres", "Sam Okafor", "Mira Johansson", "Dante Morales", "Yuki Sato",
+    "Rosa Delgado", "Amir Patel", "Ingrid Nygaard", "Leo Marchetti", "Hana Kim"];
+  // Never use placeholder name
+  if (!name || name === "New Guest") {
+    name = FALLBACK_NAMES[Math.floor(Math.random() * FALLBACK_NAMES.length)];
+  }
   const personalities = [
     "quiet, observant, guarded",
     "warm, impulsive, regretful",
